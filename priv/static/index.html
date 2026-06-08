@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Elixir Properties</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <!-- Header -->
+  <header class="bg-indigo-700 text-white px-6 py-4 flex items-center justify-between shadow">
+    <h1 class="text-2xl font-bold tracking-tight">Properties Manager</h1>
+    <div class="flex gap-3 items-center">
+      <button onclick="toggleView('all')" id="btn-all"
+        class="text-sm font-semibold px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 transition">
+        All Properties
+      </button>
+      <button onclick="toggleView('favorites')" id="btn-fav"
+        class="text-sm font-semibold px-4 py-2 rounded-lg bg-indigo-600 text-white border border-white/30 hover:bg-indigo-500 transition">
+        ♥ Favorites
+      </button>
+      <button onclick="openModal()"
+        class="bg-white text-indigo-700 font-semibold px-4 py-2 rounded-lg hover:bg-indigo-50 transition">
+        + Add Property
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-7xl mx-auto px-6 py-8">
+
+    <!-- Stats bar -->
+    <div class="grid grid-cols-4 gap-4 mb-8">
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-indigo-600" id="stat-total">0</p>
+        <p class="text-sm text-gray-500 mt-1">Total Properties</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-green-600" id="stat-available">0</p>
+        <p class="text-sm text-gray-500 mt-1">Available</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-orange-500" id="stat-sold">0</p>
+        <p class="text-sm text-gray-500 mt-1">Sold / Rented</p>
+      </div>
+      <div class="bg-white rounded-xl p-4 shadow-sm text-center">
+        <p class="text-3xl font-bold text-pink-500" id="stat-favorites">0</p>
+        <p class="text-sm text-gray-500 mt-1">Favorites</p>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="flex gap-3 mb-6">
+      <input id="search" type="text" placeholder="Search by title or location..."
+        class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+        oninput="renderProperties()" />
+      <select id="filter-status" onchange="renderProperties()"
+        class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="">All Status</option>
+        <option value="available">Available</option>
+        <option value="sold">Sold</option>
+        <option value="rented">Rented</option>
+      </select>
+      <select id="filter-type" onchange="renderProperties()"
+        class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        <option value="">All Types</option>
+        <option value="apartment">Apartment</option>
+        <option value="house">House</option>
+        <option value="villa">Villa</option>
+        <option value="studio">Studio</option>
+      </select>
+    </div>
+
+    <!-- Properties grid -->
+    <div id="properties-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <p class="text-gray-400 col-span-3 text-center py-12">Loading...</p>
+    </div>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div id="modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 p-6">
+      <div class="flex items-center justify-between mb-5">
+        <h2 id="modal-title" class="text-xl font-bold text-gray-800">Add Property</h2>
+        <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <form id="property-form" onsubmit="submitForm(event)" class="space-y-4">
+        <input type="hidden" id="form-id" />
+        <div class="grid grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+            <input id="form-title" type="text" required placeholder="e.g. Modern Apartment"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div class="col-span-2">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea id="form-description" rows="2" placeholder="Property description..."
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"></textarea>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Price ($) *</label>
+            <input id="form-price" type="number" step="0.01" required placeholder="250000"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Location *</label>
+            <input id="form-location" type="text" required placeholder="New York"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bedrooms</label>
+            <input id="form-bedrooms" type="number" min="0" placeholder="2"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Bathrooms</label>
+            <input id="form-bathrooms" type="number" min="0" placeholder="1"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Area (sqft)</label>
+            <input id="form-area" type="number" step="0.1" placeholder="850"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <select id="form-type" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="apartment">Apartment</option>
+              <option value="house">House</option>
+              <option value="villa">Villa</option>
+              <option value="studio">Studio</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select id="form-status" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+              <option value="available">Available</option>
+              <option value="sold">Sold</option>
+              <option value="rented">Rented</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex gap-3 pt-2">
+          <button type="submit"
+            class="flex-1 bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition">
+            Save Property
+          </button>
+          <button type="button" onclick="closeModal()"
+            class="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-50 transition">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div id="delete-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6 text-center">
+      <div class="text-5xl mb-3">🗑️</div>
+      <h2 class="text-xl font-bold text-gray-800 mb-2">Delete Property?</h2>
+      <p class="text-gray-500 mb-6">This action cannot be undone.</p>
+      <div class="flex gap-3">
+        <button onclick="confirmDelete()"
+          class="flex-1 bg-red-600 text-white font-semibold py-2 rounded-lg hover:bg-red-700 transition">
+          Delete
+        </button>
+        <button onclick="closeDeleteModal()"
+          class="flex-1 border border-gray-300 text-gray-700 font-semibold py-2 rounded-lg hover:bg-gray-50 transition">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API      = '/api/properties'
+    const FAV_API  = '/api/favorites'
+    const USER_ID  = 1  // placeholder until auth is added
+
+    let allProperties = []
+    let favoriteMap   = {}   // { property_id: favorite_id }
+    let currentView   = 'all'
+    let deleteTargetId = null
+
+    // ── Boot ───────────────────────────────────────────────
+    async function init() {
+      await Promise.all([fetchProperties(), fetchFavorites()])
+    }
+
+    // ── Properties ─────────────────────────────────────────
+    async function fetchProperties() {
+      try {
+        const res  = await fetch(API)
+        const data = await res.json()
+        allProperties = data.data || []
+        updateStats()
+        renderProperties()
+      } catch {
+        document.getElementById('properties-grid').innerHTML =
+          '<p class="text-red-400 col-span-3 text-center py-12">Failed to load. Is the server running?</p>'
+      }
+    }
+
+    // ── Favorites ──────────────────────────────────────────
+    async function fetchFavorites() {
+      const res  = await fetch(`${FAV_API}?user_id=${USER_ID}`)
+      const data = await res.json()
+      favoriteMap = {}
+      ;(data.data || []).forEach(f => { favoriteMap[f.property_id] = f.id })
+      updateStats()
+      renderProperties()
+    }
+
+    async function toggleFavorite(propertyId) {
+      if (favoriteMap[propertyId]) {
+        await fetch(`${FAV_API}/${favoriteMap[propertyId]}`, { method: 'DELETE' })
+      } else {
+        await fetch(FAV_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ favorite: { user_id: USER_ID, property_id: propertyId } })
+        })
+      }
+      await fetchFavorites()
+    }
+
+    // ── Stats ──────────────────────────────────────────────
+    function updateStats() {
+      document.getElementById('stat-total').textContent     = allProperties.length
+      document.getElementById('stat-available').textContent = allProperties.filter(p => p.status === 'available').length
+      document.getElementById('stat-sold').textContent      = allProperties.filter(p => p.status === 'sold' || p.status === 'rented').length
+      document.getElementById('stat-favorites').textContent = Object.keys(favoriteMap).length
+    }
+
+    // ── View toggle ────────────────────────────────────────
+    function toggleView(view) {
+      currentView = view
+      document.getElementById('btn-all').className = view === 'all'
+        ? 'text-sm font-semibold px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 transition'
+        : 'text-sm font-semibold px-4 py-2 rounded-lg bg-indigo-600 text-white border border-white/30 hover:bg-indigo-500 transition'
+      document.getElementById('btn-fav').className = view === 'favorites'
+        ? 'text-sm font-semibold px-4 py-2 rounded-lg bg-white text-indigo-700 hover:bg-indigo-50 transition'
+        : 'text-sm font-semibold px-4 py-2 rounded-lg bg-indigo-600 text-white border border-white/30 hover:bg-indigo-500 transition'
+      renderProperties()
+    }
+
+    // ── Render ─────────────────────────────────────────────
+    function renderProperties() {
+      const search = document.getElementById('search').value.toLowerCase()
+      const status = document.getElementById('filter-status').value
+      const type   = document.getElementById('filter-type').value
+
+      let list = allProperties
+
+      if (currentView === 'favorites') {
+        list = list.filter(p => favoriteMap[p.id])
+      }
+
+      list = list.filter(p => {
+        const matchSearch = !search || p.title?.toLowerCase().includes(search) || p.location?.toLowerCase().includes(search)
+        const matchStatus = !status || p.status === status
+        const matchType   = !type   || p.type === type
+        return matchSearch && matchStatus && matchType
+      })
+
+      const grid = document.getElementById('properties-grid')
+      if (list.length === 0) {
+        grid.innerHTML = `<p class="text-gray-400 col-span-3 text-center py-12">${currentView === 'favorites' ? 'No favorites yet. Click ♥ on a property.' : 'No properties found.'}</p>`
+        return
+      }
+
+      grid.innerHTML = list.map(p => {
+        const isFav = !!favoriteMap[p.id]
+        return `
+        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden flex flex-col">
+          <div class="bg-gradient-to-br from-indigo-100 to-blue-50 h-32 flex items-center justify-center text-4xl relative overflow-visible">
+            ${typeIcon(p.type)}
+          </div>
+          <div class="p-5 flex flex-col flex-1">
+            <div class="flex items-start justify-between mb-1">
+              <h3 class="font-bold text-gray-800 text-lg leading-tight">${p.title || '—'}</h3>
+              <div class="flex items-center gap-2 ml-2 shrink-0">
+                <button onclick="toggleFavorite(${p.id})"
+                  class="text-2xl leading-none transition hover:scale-110 ${isFav ? 'text-pink-500' : 'text-gray-300 hover:text-pink-400'}">
+                  ${isFav ? '♥' : '♡'}
+                </button>
+                <span class="text-xs font-semibold px-2 py-1 rounded-full ${statusColor(p.status)}">
+                  ${p.status || '—'}
+                </span>
+              </div>
+            </div>
+            <p class="text-sm text-gray-500 mb-1">📍 ${p.location || '—'}</p>
+            <p class="text-2xl font-bold text-indigo-600 mb-3">$${formatPrice(p.price)}</p>
+            <div class="flex gap-4 text-sm text-gray-500 mb-4">
+              <span>🛏 ${p.bedrooms ?? '—'} bed</span>
+              <span>🚿 ${p.bathrooms ?? '—'} bath</span>
+              <span>📐 ${p.area ?? '—'} sqft</span>
+            </div>
+            <div class="mt-auto flex gap-2">
+              <button onclick="openEdit(${p.id})"
+                class="flex-1 text-sm border border-indigo-300 text-indigo-600 font-medium py-1.5 rounded-lg hover:bg-indigo-50 transition">
+                Edit
+              </button>
+              <button onclick="openDeleteModal(${p.id})"
+                class="flex-1 text-sm border border-red-200 text-red-500 font-medium py-1.5 rounded-lg hover:bg-red-50 transition">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>`
+      }).join('')
+    }
+
+    // ── Helpers ────────────────────────────────────────────
+    function typeIcon(type) {
+      return { apartment: '🏢', house: '🏠', villa: '🏡', studio: '🏬' }[type] || '🏗️'
+    }
+
+    function statusColor(status) {
+      return { available: 'bg-green-100 text-green-700', sold: 'bg-gray-100 text-gray-600', rented: 'bg-orange-100 text-orange-600' }[status] || 'bg-gray-100 text-gray-500'
+    }
+
+    function formatPrice(price) {
+      return price ? parseFloat(price).toLocaleString() : '0'
+    }
+
+    // ── Add/Edit Modal ─────────────────────────────────────
+    function openModal() {
+      document.getElementById('modal-title').textContent = 'Add Property'
+      document.getElementById('property-form').reset()
+      document.getElementById('form-id').value = ''
+      document.getElementById('modal').classList.remove('hidden')
+    }
+
+    function openEdit(id) {
+      const p = allProperties.find(x => x.id === id)
+      if (!p) return
+      document.getElementById('modal-title').textContent   = 'Edit Property'
+      document.getElementById('form-id').value             = p.id
+      document.getElementById('form-title').value          = p.title || ''
+      document.getElementById('form-description').value    = p.description || ''
+      document.getElementById('form-price').value          = p.price || ''
+      document.getElementById('form-location').value       = p.location || ''
+      document.getElementById('form-bedrooms').value       = p.bedrooms || ''
+      document.getElementById('form-bathrooms').value      = p.bathrooms || ''
+      document.getElementById('form-area').value           = p.area || ''
+      document.getElementById('form-type').value           = p.type || 'apartment'
+      document.getElementById('form-status').value         = p.status || 'available'
+      document.getElementById('modal').classList.remove('hidden')
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.add('hidden')
+    }
+
+    async function submitForm(e) {
+      e.preventDefault()
+      const id   = document.getElementById('form-id').value
+      const body = {
+        property: {
+          title:       document.getElementById('form-title').value,
+          description: document.getElementById('form-description').value,
+          price:       document.getElementById('form-price').value,
+          location:    document.getElementById('form-location').value,
+          bedrooms:    parseInt(document.getElementById('form-bedrooms').value) || null,
+          bathrooms:   parseInt(document.getElementById('form-bathrooms').value) || null,
+          area:        parseFloat(document.getElementById('form-area').value) || null,
+          type:        document.getElementById('form-type').value,
+          status:      document.getElementById('form-status').value,
+        }
+      }
+      const url    = id ? `${API}/${id}` : API
+      const method = id ? 'PUT' : 'POST'
+      await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      closeModal()
+      fetchProperties()
+    }
+
+    // ── Delete ─────────────────────────────────────────────
+    function openDeleteModal(id) {
+      deleteTargetId = id
+      document.getElementById('delete-modal').classList.remove('hidden')
+    }
+
+    function closeDeleteModal() {
+      deleteTargetId = null
+      document.getElementById('delete-modal').classList.add('hidden')
+    }
+
+    async function confirmDelete() {
+      if (!deleteTargetId) return
+      await fetch(`${API}/${deleteTargetId}`, { method: 'DELETE' })
+      closeDeleteModal()
+      fetchProperties()
+    }
+
+    // ── Init ───────────────────────────────────────────────
+    init()
+  </script>
+</body>
+</html>
