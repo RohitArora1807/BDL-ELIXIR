@@ -7,12 +7,14 @@ defmodule ElixirAppWeb.FavoriteController do
 
   action_fallback ElixirAppWeb.FallbackController
 
-  def index(conn, %{"user_id" => user_id}) do
-    favorites = Favorites.list_favorites(user_id)
+  def index(conn, _params) do
+    favorites = Favorites.list_favorites(conn.assigns.current_user.id)
     render(conn, :index, favorites: favorites)
   end
 
   def create(conn, %{"favorite" => params}) do
+    params = Map.put(params, "user_id", conn.assigns.current_user.id)
+
     with {:ok, %Favorite{} = favorite} <- Favorites.add_favorite(params) do
       favorite = Repo.preload(favorite, :property)
 
@@ -25,7 +27,8 @@ defmodule ElixirAppWeb.FavoriteController do
   def delete(conn, %{"id" => id}) do
     favorite = Favorites.get_favorite!(id)
 
-    with {:ok, %Favorite{}} <- Favorites.remove_favorite(favorite) do
+    with :ok <- (if favorite.user_id == conn.assigns.current_user.id, do: :ok, else: {:error, :unauthorized}),
+         {:ok, %Favorite{}} <- Favorites.remove_favorite(favorite) do
       send_resp(conn, :no_content, "")
     end
   end

@@ -14,4 +14,18 @@ defmodule ElixirAppWeb.FallbackController do
     |> put_view(html: ElixirAppWeb.ErrorHTML, json: ElixirAppWeb.ErrorJSON)
     |> render(:"404")
   end
+
+  def call(conn, {:error, :unauthorized}) do
+    conn
+    |> put_status(:forbidden)
+    |> put_view(html: ElixirAppWeb.ErrorHTML, json: ElixirAppWeb.ErrorJSON)
+    |> render(:"403")
+  end
+
+  def call(conn, {:error, :invalid_credentials}) do
+    conn
+    |> put_status(:unauthorized)
+    |> put_view(html: ElixirAppWeb.ErrorHTML, json: ElixirAppWeb.ErrorJSON)
+    |> render(:"401")
+  end
 end

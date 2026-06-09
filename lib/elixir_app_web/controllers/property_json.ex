@@ -1,5 +1,6 @@
 defmodule ElixirAppWeb.PropertyJSON do
   alias ElixirApp.Properties.Property
+  alias ElixirApp.Accounts.User
 
   def index(%{properties: properties}), do: %{data: Enum.map(properties, &data/1)}
 
@@ -16,7 +17,12 @@ defmodule ElixirAppWeb.PropertyJSON do
       bathrooms:   p.bathrooms,
       area:        p.area,
       type:        p.type,
-      status:      p.status
+      status:      p.status,
+      owner_id:    p.owner_id,
+      owner:       owner_data(p.owner)
     }
   end
+
+  defp owner_data(%User{} = u), do: %{id: u.id, name: u.name, email: u.email}
+  defp owner_data(_), do: nil
 end

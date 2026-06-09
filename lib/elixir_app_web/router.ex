@@ -5,25 +5,48 @@ defmodule ElixirAppWeb.Router do
     plug :accepts, ["json"]
   end
 
+  pipeline :auth do
+    plug ElixirAppWeb.Plugs.Auth
+  end
+
   scope "/", ElixirAppWeb do
     pipe_through :api
     get "/", PageController, :index
   end
 
+  # Public auth routes — no token required
   scope "/api", ElixirAppWeb do
     pipe_through :api
 
-    resources "/properties", PropertyController, except: [:new, :edit]
-    resources "/favorites",  FavoriteController, only: [:index, :create, :delete]
+    post "/register", UserController, :register
+    post "/login",    UserController, :login
   end
 
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # Protected routes — valid token required
+  scope "/api", ElixirAppWeb do
+    pipe_through [:api, :auth]
+
+    get "/me", UserController, :me
+
+    resources "/properties", PropertyController, except: [:new, :edit]
+    resources "/favorites",  FavoriteController, only: [:index, :create, :delete]
+    resources "/offers",     OfferController,    except: [:new, :edit]
+
+    get    "/notifications",           NotificationController, :index
+    put    "/notifications/mark_read", NotificationController, :mark_read
+    delete "/notifications",           NotificationController, :clear
+  end
+
+  # Admin routes — auth plug runs, controller enforces admin role
+  scope "/api/admin", ElixirAppWeb do
+    pipe_through [:api, :auth]
+
+    get    "/users",     AdminController, :index
+    patch  "/users/:id", AdminController, :update
+    put    "/users/:id", AdminController, :update
+  end
+
   if Application.compile_env(:elixir_app, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do

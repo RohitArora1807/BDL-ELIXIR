@@ -11,6 +11,12 @@ defmodule ElixirAppWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  # Our custom socket — clients connect here with their auth token.
+  # websocket: true enables the WebSocket transport.
+  socket "/socket", ElixirAppWeb.UserSocket,
+    websocket: true,
+    longpoll: false
+
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]],
     longpoll: [connect_info: [session: @session_options]]

@@ -13,12 +13,14 @@ defmodule ElixirApp.Properties.Property do
     field :type,        :string
     field :status,      :string
 
+    belongs_to :owner, ElixirApp.Accounts.User
+
     timestamps(type: :utc_datetime)
   end
 
   def changeset(property, attrs) do
     property
-    |> cast(attrs, [:title, :description, :price, :location, :bedrooms, :bathrooms, :area, :type, :status])
+    |> cast(attrs, [:title, :description, :price, :location, :bedrooms, :bathrooms, :area, :type, :status, :owner_id])
     |> validate_required([:title, :price, :location, :status])
   end
 end

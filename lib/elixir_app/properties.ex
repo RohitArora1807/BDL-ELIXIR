@@ -3,9 +3,16 @@ defmodule ElixirApp.Properties do
   alias ElixirApp.Repo
   alias ElixirApp.Properties.Property
 
-  def list_properties, do: Repo.all(Property)
+  def list_properties do
+    Property
+    |> preload(:owner)
+    |> Repo.all()
+  end
 
-  def get_property!(id), do: Repo.get!(Property, id)
+  def get_property!(id) do
+    Repo.get!(Property, id)
+    |> Repo.preload(:owner)
+  end
 
   def create_property(attrs) do
     %Property{}
