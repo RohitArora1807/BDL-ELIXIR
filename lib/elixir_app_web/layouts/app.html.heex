@@ -9,7 +9,12 @@
       <.link navigate={~p"/app/dashboard"}     class="nav-link">Dashboard</.link>
       <.link navigate={~p"/app/properties"}    class="nav-link">Properties</.link>
       <.link navigate={~p"/app/offers"}        class="nav-link">My Offers</.link>
-      <.link navigate={~p"/app/notifications"} class="nav-link">Notifications</.link>
+      <.link navigate={~p"/app/notifications"} class="nav-link nav-bell">
+        🔔
+        <%= if assigns[:nav_unread] && assigns[:nav_unread] > 0 do %>
+          <span class="nav-unread-dot"></span>
+        <% end %>
+      </.link>
 
       <%= if assigns[:current_user] do %>
         <div class="nav-divider"></div>

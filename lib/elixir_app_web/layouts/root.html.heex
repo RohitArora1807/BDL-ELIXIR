@@ -741,6 +741,19 @@
         border-radius: var(--r-lg) var(--r-lg) 0 0;
       }
 
+      /* ── Nav bell ───────────────────────────────────── */
+      .nav-bell { position: relative; font-size: 1.1rem; padding: 0.4rem 0.6rem; }
+      .nav-unread-dot {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        background: var(--danger);
+        border-radius: 50%;
+        border: 2px solid white;
+      }
+
       /* ── Skeleton loading ───────────────────────────── */
       @keyframes pulse {
         0%, 100% { opacity: 1; }

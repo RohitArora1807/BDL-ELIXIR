@@ -9,8 +9,7 @@ import Config
 
 config :elixir_app,
   ecto_repos: [ElixirApp.Repo],
-  generators: [timestamp_type: :utc_datetime],
-  mapbox_token: System.get_env("MAPBOX_TOKEN", "")
+  generators: [timestamp_type: :utc_datetime]
 
 # Configure the endpoint
 config :elixir_app, ElixirAppWeb.Endpoint,

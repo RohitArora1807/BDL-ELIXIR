@@ -123,6 +123,8 @@ defmodule ElixirApp.Offers do
         property_id: offer.property_id, property_title: prop_title
       })
 
+      Phoenix.PubSub.broadcast(ElixirApp.PubSub, "property:#{offer.property_id}", {:offer_updated, offer})
+
       %{buyer_id: offer.buyer_id, property_title: prop_title, status: status}
       |> OfferUpdateEmailWorker.new()
       |> Oban.insert()

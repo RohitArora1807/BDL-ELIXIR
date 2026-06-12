@@ -51,6 +51,8 @@ defmodule ElixirAppWeb do
     quote do
       use Phoenix.LiveView, layout: {ElixirAppWeb.Layouts, :app}
 
+      on_mount {ElixirAppWeb.LiveHooks, :notifications}
+
       unquote(html_helpers())
     end
   end

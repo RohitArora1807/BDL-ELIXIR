@@ -81,3 +81,6 @@ config :elixir_app, ElixirApp.Mailer,
   api_key: System.get_env("POSTMARK_API_KEY")
 
 config :swoosh, :api_client, Swoosh.ApiClient.Req
+
+# Mapbox token — loaded after .env is read above
+config :elixir_app, mapbox_token: System.get_env("MAPBOX_TOKEN", "")

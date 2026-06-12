@@ -58,6 +58,12 @@ offers = Offers.list_offers_for_property(id)
     {:noreply, assign(socket, :offers, offers)}
   end
 
+  def handle_info({:offer_updated, _offer}, socket) do
+    offers   = Offers.list_offers_for_property(socket.assigns.property.id)
+    property = Properties.get_property!(socket.assigns.property.id)
+    {:noreply, socket |> assign(:offers, offers) |> assign(:property, property)}
+  end
+
   # ---- Offer events ----
 
   @impl true
