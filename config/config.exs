@@ -11,6 +11,9 @@ config :elixir_app,
   ecto_repos: [ElixirApp.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :ash, :domains, [ElixirApp.RealEstate]
+config :elixir_app, ash_domains: [ElixirApp.RealEstate]
+
 # Configure the endpoint
 config :elixir_app, ElixirAppWeb.Endpoint,
   url: [host: "localhost"],

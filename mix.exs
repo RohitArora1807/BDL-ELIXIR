@@ -53,7 +53,9 @@ defmodule ElixirApp.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:oban, "~> 2.18"},
-      {:phoenix_live_view, "~> 1.0"}
+      {:phoenix_live_view, "~> 1.0"},
+      {:ash, "~> 3.0"},
+      {:ash_postgres, "~> 2.0"}
     ]
   end
 
