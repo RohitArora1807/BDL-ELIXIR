@@ -1,6 +1,15 @@
 defmodule ElixirAppWeb.Router do
   use ElixirAppWeb, :router
 
+  pipeline :browser do
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug :put_root_layout, html: {ElixirAppWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug :put_secure_browser_headers
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -9,9 +18,37 @@ defmodule ElixirAppWeb.Router do
     plug ElixirAppWeb.Plugs.Auth
   end
 
+  pipeline :require_live_auth do
+    plug ElixirAppWeb.Plugs.LiveAuth
+  end
+
   scope "/", ElixirAppWeb do
-    pipe_through :api
+    pipe_through :browser
     get "/", PageController, :index
+  end
+
+  # Auth routes — no login required
+  scope "/", ElixirAppWeb do
+    pipe_through :browser
+
+    live "/login",    AuthLive.Login,    :index
+    live "/register", AuthLive.Register, :index
+    post "/session",          SessionController,      :create
+    post "/register-account", RegistrationController, :create
+    get  "/logout",           SessionController,      :delete
+  end
+
+  # LiveView routes — must be logged in
+  scope "/app", ElixirAppWeb do
+    pipe_through [:browser, :require_live_auth]
+
+    live "/dashboard",           DashboardLive.Index,    :index
+    live "/properties",          PropertyLive.Index,     :index
+    live "/properties/new",      PropertyLive.Index,     :new
+    live "/properties/:id",      PropertyLive.Show,      :show
+    live "/properties/:id/edit", PropertyLive.Show,      :edit
+    live "/offers",              OfferLive.Index,        :index
+    live "/notifications",       NotificationLive.Index, :index
   end
 
   # Public auth routes — no token required

@@ -1,5 +1,18 @@
 import Config
 
+# Load .env file if present
+if File.exists?(".env") do
+  File.read!(".env")
+  |> String.split("\n", trim: true)
+  |> Enum.reject(&String.starts_with?(&1, "#"))
+  |> Enum.each(fn line ->
+    case String.split(line, "=", parts: 2) do
+      [key, value] -> System.put_env(String.trim(key), String.trim(value))
+      _ -> :ok
+    end
+  end)
+end
+
 # Configure your database
 config :elixir_app, ElixirApp.Repo,
   username: "postgres",
@@ -23,7 +36,7 @@ config :elixir_app, ElixirAppWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "O1BBFgzyqWFlha+8sAPFFhweacL4XMzndsJa5JxysFw4A/JaDbZQ1ZuxXLI77x9G",
+  secret_key_base: System.get_env("SECRET_KEY_BASE"),
   watchers: []
 
 # ## SSL Support
@@ -53,7 +66,7 @@ config :elixir_app, ElixirAppWeb.Endpoint,
 config :elixir_app, dev_routes: true
 
 # Do not include metadata nor timestamps in development logs
-config :logger, :default_formatter, format: "[$level] $message\n"
+config :logger, :default_formatter, format: "[$level] $time $message\n"
 
 # Set a higher stacktrace during development. Avoid configuring such
 # in production as building large stacktraces may be expensive.
@@ -62,5 +75,9 @@ config :phoenix, :stacktrace_depth, 20
 # Initialize plugs at runtime for faster development compilation
 config :phoenix, :plug_init_mode, :runtime
 
-# Disable swoosh api client as it is only required for production adapters.
-config :swoosh, :api_client, false
+# Postmark adapter — real email delivery in dev
+config :elixir_app, ElixirApp.Mailer,
+  adapter: Swoosh.Adapters.Postmark,
+  api_key: System.get_env("POSTMARK_API_KEY")
+
+config :swoosh, :api_client, Swoosh.ApiClient.Req

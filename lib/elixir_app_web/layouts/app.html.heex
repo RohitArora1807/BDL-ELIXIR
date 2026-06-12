@@ -1,0 +1,31 @@
+<nav class="navbar">
+  <div class="navbar-inner">
+    <.link navigate={~p"/app/dashboard"} class="navbar-brand">
+      <div class="brand-icon">🏠</div>
+      EstateFlow
+    </.link>
+
+    <div class="navbar-nav">
+      <.link navigate={~p"/app/dashboard"}     class="nav-link">Dashboard</.link>
+      <.link navigate={~p"/app/properties"}    class="nav-link">Properties</.link>
+      <.link navigate={~p"/app/offers"}        class="nav-link">My Offers</.link>
+      <.link navigate={~p"/app/notifications"} class="nav-link">Notifications</.link>
+
+      <%= if assigns[:current_user] do %>
+        <div class="nav-divider"></div>
+        <div class="nav-user">
+          <div class="nav-avatar">
+            <%= String.first(@current_user.name || @current_user.email) %>
+          </div>
+          <%= @current_user.name || @current_user.email %>
+        </div>
+        <.link href={~p"/logout"} class="btn-signout">Sign out</.link>
+      <% end %>
+    </div>
+  </div>
+</nav>
+
+<main class="page-container">
+  <.flash_group flash={@flash} />
+  <%= @inner_content %>
+</main>

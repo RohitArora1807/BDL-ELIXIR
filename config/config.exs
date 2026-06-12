@@ -9,7 +9,8 @@ import Config
 
 config :elixir_app,
   ecto_repos: [ElixirApp.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  mapbox_token: System.get_env("MAPBOX_TOKEN", "")
 
 # Configure the endpoint
 config :elixir_app, ElixirAppWeb.Endpoint,
@@ -38,6 +39,14 @@ config :logger, :default_formatter,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+
+# Oban background job processing
+# queues: default handles email/SMS workers
+# 10 concurrent jobs max on the default queue
+config :elixir_app, Oban,
+  engine: Oban.Engines.Basic,
+  repo: ElixirApp.Repo,
+  queues: [default: 10, mailers: 5]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

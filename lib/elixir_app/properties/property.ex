@@ -12,6 +12,7 @@ defmodule ElixirApp.Properties.Property do
     field :area,        :float
     field :type,        :string
     field :status,      :string
+    field :image_path,  :string
 
     belongs_to :owner, ElixirApp.Accounts.User
 
@@ -20,7 +21,9 @@ defmodule ElixirApp.Properties.Property do
 
   def changeset(property, attrs) do
     property
-    |> cast(attrs, [:title, :description, :price, :location, :bedrooms, :bathrooms, :area, :type, :status, :owner_id])
-    |> validate_required([:title, :price, :location, :status])
+    |> cast(attrs, [:title, :description, :price, :location, :bedrooms, :bathrooms, :area, :type, :status, :owner_id, :image_path])
+    |> validate_required([:title, :price, :location])
+    |> validate_length(:title, min: 3, max: 100)
+    |> validate_number(:price, greater_than: 0)
   end
 end
