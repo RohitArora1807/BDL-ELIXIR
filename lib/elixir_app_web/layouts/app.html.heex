@@ -9,6 +9,8 @@
       <.link navigate={~p"/app/dashboard"}     class="nav-link">Dashboard</.link>
       <.link navigate={~p"/app/properties"}    class="nav-link">Properties</.link>
       <.link navigate={~p"/app/offers"}        class="nav-link">My Offers</.link>
+      <.link navigate={~p"/app/ash"} class="nav-link" style="color:#7c3aed;font-weight:700;">⚡ Ash</.link>
+      <.link navigate={~p"/app/ash/comparison"} class="nav-link" style="color:#7c3aed;font-size:0.8rem;">vs Ecto</.link>
       <.link navigate={~p"/app/notifications"} class="nav-link nav-bell">
         🔔
         <%= if assigns[:nav_unread] && assigns[:nav_unread] > 0 do %>

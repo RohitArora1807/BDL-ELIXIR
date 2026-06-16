@@ -1,7 +1,8 @@
 defmodule ElixirApp.RealEstate.Property do
   use Ash.Resource,
     domain: ElixirApp.RealEstate,
-    data_layer: AshPostgres.DataLayer
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
 
   postgres do
     table "ash_properties"
@@ -39,6 +40,40 @@ defmodule ElixirApp.RealEstate.Property do
       public?: true
   end
 
+  # ── Policies ──────────────────────────────────────────────────────────────
+  # Policies are checked on every Ash call. The actor (logged-in user) is
+  # compared against each rule. If no rule passes → Ash.Error.Forbidden.
+  #
+  # authorize_if  → allow IF the check passes
+  # forbid_if     → deny  IF the check passes
+  # Rules are evaluated top-to-bottom; first match wins per policy block.
+
+  policies do
+    # Everyone can read — buyers browse listings.
+    policy action_type(:read) do
+      authorize_if always()
+    end
+
+    # Admins can create anything. Sellers can list their own properties.
+    # Buyers cannot create. No actor → forbidden.
+    policy action_type(:create) do
+      authorize_if actor_attribute_equals(:role, "admin")
+      authorize_if actor_attribute_equals(:role, "seller")
+    end
+
+    # Admins can update any property.
+    # Sellers can only update properties they own (checked via :owner relationship).
+    policy action_type(:update) do
+      authorize_if actor_attribute_equals(:role, "admin")
+      authorize_if [actor_attribute_equals(:role, "seller"), relates_to_actor_via(:owner)]
+    end
+
+    # Only admins can delete.
+    policy action_type(:destroy) do
+      authorize_if actor_attribute_equals(:role, "admin")
+    end
+  end
+
   # ── Validations ───────────────────────────────────────────────────────────
   # Declared in the resource — not in a changeset function like Ecto.
   # Runs automatically on every matching action.
@@ -61,10 +96,17 @@ defmodule ElixirApp.RealEstate.Property do
 
     create :create do
       accept [:title, :description, :location, :price,
-              :bedrooms, :bathrooms, :area, :type, :image_path, :owner_id]
+              :bedrooms, :bathrooms, :area, :type, :image_path]
 
-      # Changes run as part of the action pipeline — like before_save callbacks.
-      # This one forces status to "available" on every new listing.
+      # Automatically set the owner to whoever is making the request.
+      # context.actor is whatever you passed as actor: in the Ash call.
+      change fn changeset, context ->
+        case context.actor do
+          %{id: id} -> Ash.Changeset.force_change_attribute(changeset, :owner_id, id)
+          _         -> changeset
+        end
+      end
+
       change set_attribute(:status, "available")
     end
 

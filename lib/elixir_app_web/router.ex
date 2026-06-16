@@ -49,6 +49,17 @@ defmodule ElixirAppWeb.Router do
     live "/properties/:id/edit", PropertyLive.Show,      :edit
     live "/offers",              OfferLive.Index,        :index
     live "/notifications",       NotificationLive.Index, :index
+
+    # ── Ash pages (purple) — mirrors the Ecto pages but uses Ash queries + policies ──
+    live "/ash",                       AshDashboardLive.Index,  :index
+    live "/ash/properties",            AshPropertyLive.Index,   :index
+    live "/ash/properties/new",        AshPropertyLive.Form,    :new
+    live "/ash/properties/:id",        AshPropertyLive.Show,    :show
+    live "/ash/properties/:id/edit",   AshPropertyLive.Form,    :edit
+    live "/ash/offers",                AshOfferLive.Index,      :index
+    live "/ash/favorites",             AshFavoriteLive.Index,   :index
+    live "/ash/metrics",               AshMetricLive.Index,     :index
+    live "/ash/comparison",            AshComparisonLive.Index, :index
   end
 
   # Public auth routes — no token required

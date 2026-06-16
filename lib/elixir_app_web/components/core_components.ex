@@ -63,11 +63,58 @@ defmodule ElixirAppWeb.CoreComponents do
     """
   end
 
-  # Form input with label and inline error
+  # Form input with label and inline error — three function heads for textarea/select/input
+
   attr :field, Phoenix.HTML.FormField, required: true
   attr :label, :string, default: nil
   attr :type, :string, default: "text"
-  attr :rest, :global, include: ~w(min max step required placeholder rows)
+  attr :options, :list, default: []
+  attr :rest, :global, include: ~w(min max step required placeholder rows style)
+
+  def input(%{type: "textarea"} = assigns) do
+    ~H"""
+    <div>
+      <%= if @label do %>
+        <label class="form-label" for={@field.id}><%= @label %></label>
+      <% end %>
+      <textarea
+        id={@field.id}
+        name={@field.name}
+        class={"form-input #{if @field.errors != [], do: "input-error"}"}
+        rows="3"
+        {@rest}
+      ><%= Phoenix.HTML.Form.normalize_value("textarea", @field.value) %></textarea>
+      <%= for {msg, _} <- @field.errors do %>
+        <span class="field-error"><%= msg %></span>
+      <% end %>
+    </div>
+    """
+  end
+
+  def input(%{type: "select"} = assigns) do
+    ~H"""
+    <div>
+      <%= if @label do %>
+        <label class="form-label" for={@field.id}><%= @label %></label>
+      <% end %>
+      <select
+        id={@field.id}
+        name={@field.name}
+        class={"form-input #{if @field.errors != [], do: "input-error"}"}
+        {@rest}
+      >
+        <%= for {label, value} <- @options do %>
+          <option value={value} selected={to_string(@field.value) == to_string(value)}>
+            <%= label %>
+          </option>
+        <% end %>
+      </select>
+      <%= for {msg, _} <- @field.errors do %>
+        <span class="field-error"><%= msg %></span>
+      <% end %>
+    </div>
+    """
+  end
 
   def input(assigns) do
     ~H"""
@@ -75,24 +122,14 @@ defmodule ElixirAppWeb.CoreComponents do
       <%= if @label do %>
         <label class="form-label" for={@field.id}><%= @label %></label>
       <% end %>
-      <%= if @type == "textarea" do %>
-        <textarea
-          id={@field.id}
-          name={@field.name}
-          class={"form-input #{if @field.errors != [], do: "input-error"}"}
-          rows="3"
-          {@rest}
-        ><%= Phoenix.HTML.Form.normalize_value("textarea", @field.value) %></textarea>
-      <% else %>
-        <input
-          id={@field.id}
-          name={@field.name}
-          type={@type}
-          value={Phoenix.HTML.Form.normalize_value(@type, @field.value)}
-          class={"form-input #{if @field.errors != [], do: "input-error"}"}
-          {@rest}
-        />
-      <% end %>
+      <input
+        id={@field.id}
+        name={@field.name}
+        type={@type}
+        value={Phoenix.HTML.Form.normalize_value(@type, @field.value)}
+        class={"form-input #{if @field.errors != [], do: "input-error"}"}
+        {@rest}
+      />
       <%= for {msg, _} <- @field.errors do %>
         <span class="field-error"><%= msg %></span>
       <% end %>

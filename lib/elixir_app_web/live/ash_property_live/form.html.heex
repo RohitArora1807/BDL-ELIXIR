@@ -1,0 +1,148 @@
+<div class="page-container" style="max-width:680px;margin:2rem auto;padding:0 1rem;">
+
+  <div style="margin-bottom:1.5rem;">
+    <h1 style="font-size:1.5rem;font-weight:700;color:#1e293b;margin:0 0 0.25rem;">
+      <%= @page_title %>
+    </h1>
+    <p style="color:#64748b;font-size:0.875rem;margin:0;">
+      This form is powered by <strong>AshPhoenix.Form</strong> — validations and
+      save logic come directly from the Ash <code>Property</code> resource, not from
+      hand-written changeset code.
+    </p>
+  </div>
+
+  <!-- Actor info box: shows who Ash sees as the current user and their role.
+       Policies check actor.role to decide what actions are allowed. -->
+  <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1.5rem;font-size:0.8rem;color:#0369a1;">
+    <strong>Actor (you):</strong>
+    <%= if @current_user do %>
+      <%= @current_user.email %> — role: <strong><%= @current_user.role %></strong>
+      <%= if @current_user.role == "buyer" do %>
+        <span style="color:#dc2626;"> ⚠ Buyers cannot create/edit. This form will be forbidden by Ash policy.</span>
+      <% end %>
+    <% else %>
+      <span style="color:#dc2626;">Not logged in — Ash will forbid all write actions.</span>
+    <% end %>
+  </div>
+
+  <!-- AshPhoenix form
+       for={@form}      → binds the AshPhoenix.Form struct (wrapped by to_form)
+       phx-change       → fires "validate" on every keystroke
+       phx-submit       → fires "save" on submission -->
+  <.form
+    for={@form}
+    phx-change="validate"
+    phx-submit="save"
+    style="background:white;border:1px solid #e2e8f0;border-radius:12px;padding:1.5rem;"
+  >
+
+    <!-- Each .input field reads errors directly from @form.
+         Ash puts errors there via AshPhoenix.Form.validate/submit — no manual mapping. -->
+    <div style="display:grid;gap:1rem;">
+
+      <.input
+        field={@form[:title]}
+        type="text"
+        label="Title"
+        placeholder="e.g. 3-bed house in Morgantown"
+      />
+
+      <.input
+        field={@form[:description]}
+        type="textarea"
+        label="Description"
+        placeholder="Describe the property..."
+        style="min-height:80px;"
+      />
+
+      <.input
+        field={@form[:location]}
+        type="text"
+        label="Location"
+        placeholder="e.g. Morgantown, WV"
+      />
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+        <.input
+          field={@form[:price]}
+          type="number"
+          label="Price ($)"
+          placeholder="250000"
+          step="1000"
+          min="0"
+        />
+
+        <.input
+          field={@form[:type]}
+          type="select"
+          label="Type"
+          options={[{"House", "house"}, {"Apartment", "apartment"}, {"Condo", "condo"}, {"Land", "land"}]}
+        />
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;">
+        <.input
+          field={@form[:bedrooms]}
+          type="number"
+          label="Bedrooms"
+          placeholder="3"
+          min="0"
+        />
+
+        <.input
+          field={@form[:bathrooms]}
+          type="number"
+          label="Bathrooms"
+          placeholder="2"
+          min="0"
+        />
+
+        <.input
+          field={@form[:area]}
+          type="number"
+          label="Area (sq ft)"
+          placeholder="1500"
+          step="10"
+          min="0"
+        />
+      </div>
+
+      <!-- Status only shown on edit. On create, the Ash action always
+           sets it to "available" via change set_attribute(:status, "available"). -->
+      <%= if @live_action == :edit do %>
+        <.input
+          field={@form[:status]}
+          type="select"
+          label="Status"
+          options={[{"Available", "available"}, {"Pending", "pending"}, {"Sold", "sold"}]}
+        />
+      <% end %>
+
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:1.5rem;padding-top:1rem;border-top:1px solid #e2e8f0;">
+      <.link navigate={~p"/app/properties"} style="color:#64748b;font-size:0.875rem;">
+        ← Back to listings
+      </.link>
+
+      <.button
+        type="submit"
+        style="background:#3b82f6;color:white;padding:0.5rem 1.5rem;border-radius:8px;font-weight:600;border:none;cursor:pointer;"
+      >
+        <%= if @live_action == :new, do: "List Property", else: "Save Changes" %>
+      </.button>
+    </div>
+
+  </.form>
+
+  <div style="margin-top:1.5rem;background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:1rem;font-size:0.8rem;color:#854d0e;">
+    <strong>What Ash is doing behind the scenes:</strong>
+    <ul style="margin:0.5rem 0 0;padding-left:1.25rem;line-height:1.8;">
+      <li><code>for_create/for_update</code> reads accepted fields from the action definition</li>
+      <li><code>validate/2</code> runs all <code>validations do</code> blocks from the resource</li>
+      <li><code>submit/2</code> checks policies → runs changes → writes to DB — all in one call</li>
+      <li>Errors are mapped to fields automatically — no <code>traverse_errors</code> needed</li>
+    </ul>
+  </div>
+
+</div>
