@@ -46,6 +46,13 @@ defmodule ElixirApp.Properties do
     |> Repo.preload(:owner)
   end
 
+  def get_property(id) do
+    case Repo.get(Property, id) do
+      nil      -> nil
+      property -> Repo.preload(property, :owner)
+    end
+  end
+
   def create_property(attrs) do
     case %Property{} |> Property.changeset(attrs) |> Repo.insert() do
       {:ok, property} ->

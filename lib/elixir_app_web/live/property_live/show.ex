@@ -22,24 +22,29 @@ defmodule ElixirAppWeb.PropertyLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _url, socket) do
-    property  = Properties.get_property!(id)
-    show_edit = socket.assigns.live_action == :edit
+    case Properties.get_property(id) do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Property not found.")
+         |> push_navigate(to: ~p"/app/properties")}
 
-    socket =
-      socket
-      |> assign(:property, property)
-      |> assign(:show_edit_form, show_edit)
-      |> assign(:page_title, property.title)
+      property ->
+        show_edit = socket.assigns.live_action == :edit
 
-    if connected?(socket) do
-      # WS phase: subscribe to real-time updates + load secondary data
-      Phoenix.PubSub.subscribe(ElixirApp.PubSub, "property:#{id}")
-offers = Offers.list_offers_for_property(id)
-      {:noreply, socket |> assign(:offers, offers) |> assign(:loading, false)}
-    else
-      # HTTP phase: render the page immediately with property info only.
-      # Offers are secondary — no point hitting the DB twice before WS connects.
-      {:noreply, socket}
+        socket =
+          socket
+          |> assign(:property, property)
+          |> assign(:show_edit_form, show_edit)
+          |> assign(:page_title, property.title)
+
+        if connected?(socket) do
+          Phoenix.PubSub.subscribe(ElixirApp.PubSub, "property:#{id}")
+          offers = Offers.list_offers_for_property(id)
+          {:noreply, socket |> assign(:offers, offers) |> assign(:loading, false)}
+        else
+          {:noreply, socket}
+        end
     end
   end
 

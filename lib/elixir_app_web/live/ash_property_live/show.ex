@@ -1,27 +1,22 @@
 defmodule ElixirAppWeb.AshPropertyLive.Show do
   use ElixirAppWeb, :live_view
 
-  alias ElixirApp.RealEstate.Property
+  alias ElixirApp.RealEstate.{Property, Offer}
   alias ElixirApp.Accounts
 
   @impl true
   def mount(_params, session, socket) do
-    {:ok, assign(socket, :current_user, load_user(session))}
+    {:ok,
+     socket
+     |> assign(:current_user, load_user(session))
+     |> assign(:offers, [])
+     |> assign(:show_offer_form, false)}
   end
 
   @impl true
   def handle_params(%{"id" => id}, _url, socket) do
     actor = socket.assigns.current_user
 
-    # ── Ash way ───────────────────────────────────────────────────────────
-    # Ash.get! loads one record by primary key and runs policies.
-    # load: [:owner] asks Ash to preload the owner relationship automatically.
-    #
-    # Ecto equivalent:
-    #   Properties.get_property!(id)  →  Repo.get!(Property, id) |> Repo.preload(:owner)
-    #
-    # Key difference: Ash checks the :read policy before hitting the DB.
-    # If the policy denies access, it raises Ash.Error.Forbidden — not a 404.
     case Ash.get(Property, id, domain: ElixirApp.RealEstate, actor: actor, load: [:owner]) do
       {:ok, nil} ->
         {:noreply,
@@ -30,9 +25,11 @@ defmodule ElixirAppWeb.AshPropertyLive.Show do
          |> push_navigate(to: ~p"/app/ash/properties")}
 
       {:ok, property} ->
+        offers = list_offers(property.id, actor)
         {:noreply,
          socket
          |> assign(:property, property)
+         |> assign(:offers, offers)
          |> assign(:page_title, property.title)}
 
       {:error, %Ash.Error.Forbidden{}} ->
@@ -49,17 +46,51 @@ defmodule ElixirAppWeb.AshPropertyLive.Show do
     end
   end
 
-  # ── Delete via Ash ───────────────────────────────────────────────────────
-  # Ecto way:
-  #   assert_owner(socket)   # manual check — did you forget this? = bug
-  #   Properties.delete_property(property)
-  #
-  # Ash way:
-  #   Ash.destroy!(property, actor: actor)
-  #   The :destroy policy runs automatically — if role != admin → forbidden.
-  #   No assert_owner needed. You cannot forget the check.
+  # ── Submit offer via Ash.create ──────────────────────────────────────────
 
   @impl true
+  def handle_event("submit_offer", %{"amount" => amount, "message" => message}, socket) do
+    actor    = socket.assigns.current_user
+    property = socket.assigns.property
+
+    case Ash.create(Offer, %{amount: amount, property_id: property.id, message: message},
+           domain: ElixirApp.RealEstate,
+           actor: actor
+         ) do
+      {:ok, _offer} ->
+        offers = list_offers(property.id, actor)
+        {:noreply,
+         socket
+         |> put_flash(:info, "Offer submitted via Ash.create!")
+         |> assign(:offers, offers)
+         |> assign(:show_offer_form, false)}
+
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, put_flash(socket, :error, "Ash policy denied — only buyers can submit offers.")}
+
+      {:error, error} ->
+        msg = case error do
+          %Ash.Error.Invalid{errors: [%{message: m} | _]} -> m
+          _ -> "Invalid offer — check amount."
+        end
+        {:noreply, put_flash(socket, :error, msg)}
+    end
+  end
+
+  def handle_event("toggle_offer_form", _params, socket) do
+    {:noreply, assign(socket, :show_offer_form, !socket.assigns.show_offer_form)}
+  end
+
+  # ── Accept / Reject offers ───────────────────────────────────────────────
+
+  def handle_event("accept_offer", %{"id" => id}, socket) do
+    run_offer_action(id, :accept, "accepted", socket)
+  end
+
+  def handle_event("reject_offer", %{"id" => id}, socket) do
+    run_offer_action(id, :reject, "rejected", socket)
+  end
+
   def handle_event("delete", _params, socket) do
     case Ash.destroy(socket.assigns.property,
            domain: ElixirApp.RealEstate,
@@ -79,6 +110,32 @@ defmodule ElixirAppWeb.AshPropertyLive.Show do
     end
   end
 
+  # ── Helpers ──────────────────────────────────────────────────────────────
+
+  defp run_offer_action(id, action, label, socket) do
+    actor = socket.assigns.current_user
+
+    with {:ok, offer} <- Ash.get(Offer, id, domain: ElixirApp.RealEstate, actor: actor),
+         {:ok, _}     <- Ash.update(offer, %{}, action: action, domain: ElixirApp.RealEstate, actor: actor) do
+      offers = list_offers(socket.assigns.property.id, actor)
+      {:noreply,
+       socket
+       |> put_flash(:info, "Offer #{label}.")
+       |> assign(:offers, offers)}
+    else
+      {:error, %Ash.Error.Forbidden{}} ->
+        {:noreply, put_flash(socket, :error, "Ash policy denied.")}
+      _ ->
+        {:noreply, put_flash(socket, :error, "Action failed.")}
+    end
+  end
+
+  defp list_offers(property_id, actor) do
+    Offer
+    |> Ash.Query.for_read(:for_property, %{property_id: property_id}, actor: actor)
+    |> Ash.read!(domain: ElixirApp.RealEstate, actor: actor, load: [:buyer])
+  end
+
   defp load_user(%{"user_id" => id}), do: Accounts.get_user(id)
   defp load_user(_), do: nil
 
@@ -88,9 +145,16 @@ defmodule ElixirAppWeb.AshPropertyLive.Show do
   defp is_admin?(nil),     do: false
   defp is_admin?(user),    do: user.role == "admin"
 
+  defp is_buyer?(nil),     do: false
+  defp is_buyer?(user),    do: user.role == "buyer"
+
   defp status_color("available"), do: "green"
   defp status_color("sold"),      do: "red"
   defp status_color(_),           do: "yellow"
+
+  defp offer_color("accepted"), do: "green"
+  defp offer_color("rejected"), do: "red"
+  defp offer_color(_),          do: "yellow"
 
   @impl true
   def render(assigns) do
@@ -192,43 +256,111 @@ defmodule ElixirAppWeb.AshPropertyLive.Show do
           </div>
         </div>
 
-        <!-- Right: Ash vs Ecto comparison -->
+        <!-- Right: Offers panel -->
         <div class="card card-pad">
-          <h2 style="font-size:0.95rem;font-weight:700;color:#1e293b;margin-bottom:1rem;">
-            What's different here vs Ecto?
-          </h2>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <p style="font-size:0.875rem;font-weight:700;color:#1e293b;margin:0;">
+              Offers
+              <span style="font-size:0.75rem;font-weight:500;color:#94a3b8;margin-left:0.35rem;">
+                (<%= length(@offers) %>)
+              </span>
+            </p>
+            <%= if is_buyer?(@current_user) && @property.status == "available" do %>
+              <button
+                phx-click="toggle_offer_form"
+                class="btn btn-primary btn-sm"
+                style="background:#7c3aed;border-color:#7c3aed;"
+              >
+                <%= if @show_offer_form, do: "Cancel", else: "+ Submit Offer" %>
+              </button>
+            <% end %>
+          </div>
 
-          <div style="display:flex;flex-direction:column;gap:1rem;">
+          <!-- Teaching note -->
+          <div style="background:#f5f3ff;border:1px solid #ddd6fe;border-radius:8px;padding:0.65rem 0.85rem;margin-bottom:1rem;font-size:0.72rem;color:#5b21b6;">
+            ⚡ <strong>Ash.create(Offer, &#37;&#123;...&#125;, actor: current_user)</strong> — buyer_id set automatically, policy checked, validation runs. No manual auth code.
+          </div>
 
-            <div style="background:#f0fdf4;border-radius:8px;padding:0.9rem;">
-              <div style="font-size:0.7rem;font-weight:700;color:#15803d;margin-bottom:0.4rem;">ECTO show.ex does:</div>
-              <pre style="font-size:0.7rem;color:#166534;white-space:pre-wrap;margin:0;">property = Properties.get_property!(id)
-# Then manually:
-defp assert_owner(socket) do
-  if user.id == property.owner_id,
-    do: :ok,
-    else: &#123;:error, :unauthorized&#125;
-end
-# Forget assert_owner = security bug</pre>
+          <!-- Offer form -->
+          <%= if @show_offer_form do %>
+            <div style="background:#faf5ff;border:1px solid #ddd6fe;border-radius:8px;padding:1rem;margin-bottom:1rem;">
+              <form phx-submit="submit_offer" style="display:flex;flex-direction:column;gap:0.65rem;">
+                <div>
+                  <label style="font-size:0.78rem;font-weight:600;color:#374151;">Offer Amount ($)</label>
+                  <input
+                    type="number"
+                    name="amount"
+                    placeholder="450000"
+                    min="1"
+                    required
+                    style="width:100%;padding:0.5rem;border:1px solid #c4b5fd;border-radius:6px;margin-top:0.2rem;font-size:0.85rem;"
+                  />
+                </div>
+                <div>
+                  <label style="font-size:0.78rem;font-weight:600;color:#374151;">Message (optional)</label>
+                  <textarea
+                    name="message"
+                    rows="2"
+                    placeholder="I'm pre-approved..."
+                    style="width:100%;padding:0.5rem;border:1px solid #c4b5fd;border-radius:6px;margin-top:0.2rem;font-size:0.85rem;"
+                  ></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed;font-size:0.85rem;">
+                  Submit via Ash.create →
+                </button>
+              </form>
             </div>
+          <% end %>
 
-            <div style="background:#f5f3ff;border-radius:8px;padding:0.9rem;">
-              <div style="font-size:0.7rem;font-weight:700;color:#7c3aed;margin-bottom:0.4rem;">ASH show.ex does:</div>
-              <pre style="font-size:0.7rem;color:#5b21b6;white-space:pre-wrap;margin:0;">Ash.get(Property, id, actor: user)
-# Policy runs automatically before DB hit.
-# No assert_owner. Can't forget it.
-# Ash.destroy(property, actor: user)
-# Policy checked again — admin only.</pre>
-            </div>
-
-            <div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:0.9rem;">
-              <div style="font-size:0.75rem;font-weight:700;color:#c2410c;margin-bottom:0.4rem;">Key insight:</div>
-              <div style="font-size:0.75rem;color:#9a3412;line-height:1.6;">
-                In Ecto, authorization is in your LiveView code — easy to miss. In Ash, authorization lives in the resource's <code>policies do</code> block and runs on every call automatically.
+          <!-- Offers list -->
+          <%= if @offers == [] do %>
+            <div class="empty-state" style="padding:2rem 1rem;">
+              <div class="empty-state-icon">📭</div>
+              <div class="empty-state-title">No offers yet</div>
+              <div class="empty-state-desc">
+                <%= if is_buyer?(@current_user), do: "Submit an offer above.", else: "Buyers can submit offers on this property." %>
               </div>
             </div>
-
-          </div>
+          <% else %>
+            <div style="display:flex;flex-direction:column;gap:0.75rem;">
+              <%= for offer <- @offers do %>
+                <div class="offer-item">
+                  <div class="offer-item-header">
+                    <span class="offer-amount">$<%= offer.amount %></span>
+                    <.badge color={offer_color(offer.status)}><%= offer.status %></.badge>
+                  </div>
+                  <%= if offer.buyer do %>
+                    <div class="offer-buyer" style="font-size:0.75rem;color:#5b21b6;">
+                      ⚡ via <code>belongs_to :buyer</code>: <%= offer.buyer.email %>
+                    </div>
+                  <% end %>
+                  <%= if offer.message do %>
+                    <div style="font-size:0.75rem;color:#64748b;font-style:italic;margin-top:0.2rem;">"<%= offer.message %>"</div>
+                  <% end %>
+                  <%= if owns?(@current_user, @property) && offer.status == "pending" do %>
+                    <div class="offer-actions" style="margin-top:0.5rem;">
+                      <button
+                        phx-click="accept_offer"
+                        phx-value-id={offer.id}
+                        class="btn btn-sm"
+                        style="background:#16a34a;color:white;border:none;padding:0.3rem 0.65rem;border-radius:5px;cursor:pointer;flex:1;font-size:0.75rem;"
+                      >
+                        ✓ Accept
+                      </button>
+                      <button
+                        phx-click="reject_offer"
+                        phx-value-id={offer.id}
+                        class="btn btn-sm"
+                        style="background:#dc2626;color:white;border:none;padding:0.3rem 0.65rem;border-radius:5px;cursor:pointer;flex:1;font-size:0.75rem;"
+                      >
+                        ✕ Reject
+                      </button>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
         </div>
       </div>
     </div>

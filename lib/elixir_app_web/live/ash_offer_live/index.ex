@@ -1,8 +1,6 @@
 defmodule ElixirAppWeb.AshOfferLive.Index do
   use ElixirAppWeb, :live_view
 
-  import Ash.Query
-
   alias ElixirApp.RealEstate.{Offer, Property}
   alias ElixirApp.Accounts
 
